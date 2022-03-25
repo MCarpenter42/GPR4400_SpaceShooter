@@ -8,6 +8,7 @@ TagManager:
   - Dynamic
   - Crosshair
   - UI
+  - Objective
   layers:
   - Default
   - TransparentFX
