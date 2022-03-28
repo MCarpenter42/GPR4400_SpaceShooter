@@ -58,3 +58,5 @@ sysinfo.txt
 # Crashlytics generated file
 crashlytics-build.properties
 
+# Manually added BATCH files for the purpose of automating pulls and pushes
+*.bat
