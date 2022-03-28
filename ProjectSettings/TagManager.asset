@@ -9,6 +9,12 @@ TagManager:
   - Crosshair
   - UI
   - Objective
+  - Weapon
+  - Highlight
+  - Icon
+  - Emitter
+  - Target
+  - MenuFrame
   layers:
   - Default
   - TransparentFX

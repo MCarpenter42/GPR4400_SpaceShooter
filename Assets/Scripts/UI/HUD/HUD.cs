@@ -1,20 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class HUD : UI
 {
-    [SerializeField] private Texture2D empty;
-    private CursorMode cursorMode;
+    #region [ PARAMETERS ]
 
-    void Start()
-    {
-        cursorMode = CursorMode.Auto;
-        Cursor.SetCursor(empty, Vector2.zero, cursorMode);
-    }
+    #endregion
 
-    void Update()
-    {
-        
-    }
+    /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+    /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
 }
