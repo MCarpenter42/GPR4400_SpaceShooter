@@ -411,7 +411,7 @@ public class Player : CoreFunc
         GameObject laserInstance = Instantiate(laser);
         LineRenderer laserRenderer = laserInstance.GetComponent<LineRenderer>();
         laserRenderer.SetPositions(linePoints);
-        StartCoroutine(LaserFade(laserInstance, 0.2f));
+        StartCoroutine(LaserFade(laserInstance, 0.1f));
     }
 
     private IEnumerator LaserFade(GameObject line, float time)
