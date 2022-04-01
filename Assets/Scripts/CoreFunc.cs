@@ -110,7 +110,8 @@ public class CoreFunc : MonoBehaviour
             for (int i = 0; i < parentObj.transform.childCount; i++)
             {
                 GameObject child = parentObj.transform.GetChild(i).gameObject;
-                if (child.GetComponent<T>() != null)
+                T childComponent = child.GetComponent<T>();
+                if (!childComponent.Equals(null))
                 {
                     childrenWithComponent.Add(child);
                 }

@@ -22,6 +22,8 @@ TagManager:
   - Bar
   - Pickup
   - Boundary
+  - Breakable
+  - Barrier
   layers:
   - Default
   - TransparentFX

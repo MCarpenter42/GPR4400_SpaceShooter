@@ -479,9 +479,10 @@ public class Player : CoreFunc
             Vector3 hitLocation = hit.point;
 
             GameObject hitObject = hit.collider.gameObject;
-            if (hitObject.CompareTag("Target"))
+            if (hitObject.CompareTag("Breakable"))
             {
-
+                Breakable breakObj = hitObject.GetComponent<Breakable>();
+                breakObj.Break(hitLocation);
             }
 
             foreach (GameObject emitter in weaponEmitters)
