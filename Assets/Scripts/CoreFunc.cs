@@ -161,6 +161,52 @@ public class CoreFunc : MonoBehaviour
         }
     }
 
+    public Coroutine DoColourFlash(Image img, Color clrFlash, float time, bool vanishAfter, bool realTime)
+    {
+        Color clrStart = img.color;
+        return StartCoroutine(ColourFlash(img, clrStart, clrFlash, time, vanishAfter, realTime));
+    }
+
+    public IEnumerator ColourFlash(Image img, Color clrStart, Color clrFlash, float time, bool vanishAfter, bool realTime)
+    {
+        int aFrames = (int)(100.0f * time);
+        float aFrameTime = time / (float)aFrames;
+        aFrames /= 2;
+
+        for (int i = 1; i <= aFrames; i++)
+        {
+            float delta = (float)i / (float)aFrames;
+            if (realTime)
+            {
+                yield return new WaitForSecondsRealtime(aFrameTime);
+            }
+            else
+            {
+                yield return new WaitForSeconds(aFrameTime);
+            }
+            img.color = Color.Lerp(clrStart, clrFlash, delta);
+        }
+
+        for (int i = 1; i <= aFrames; i++)
+        {
+            float delta = (float)i / (float)aFrames;
+            if (realTime)
+            {
+                yield return new WaitForSecondsRealtime(aFrameTime);
+            }
+            else
+            {
+                yield return new WaitForSeconds(aFrameTime);
+            }
+            img.color = Color.Lerp(clrFlash, clrStart, delta);
+        }
+
+        if (vanishAfter)
+        {
+            img.gameObject.SetActive(false);
+        }
+    }
+
     public static Color GetColor(int clrIndex)
     {
         return clrList[clrIndex];

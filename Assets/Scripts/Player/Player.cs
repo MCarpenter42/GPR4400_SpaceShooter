@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class Player : CoreFunc
 {
@@ -30,7 +31,12 @@ public class Player : CoreFunc
     private Rigidbody rb;
 
     [SerializeField] float maxMoveSpeed = 1.0f;
+    private float moveForceFactor = 5.0f;
+    private Vector3 movementInput = new Vector3();
     [SerializeField] float sprintFactor = 4.0f;
+
+    private Vector3 fixedUpdateVel;
+    private float dangerSpeed = 100.0f;
 
     // STEERING & AIMING
 
@@ -51,7 +57,31 @@ public class Player : CoreFunc
     private List<GameObject> weaponEmitters = new List<GameObject>();
     [SerializeField] GameObject laser;
 
-    // OTHER
+    // RESOURCES
+
+    private int healthMax = 20;
+    private int healthCurrent;
+
+    private int energyMax = 50;
+    private int energyCurrent;
+    [SerializeField] float energyDrainInterval;
+    private float energyDrainTimer = 0.0f;
+
+    private GameObject barHealth;
+    private Vector3 barHealth_nmSize;
+    private Vector3 barHealth_nmPos;
+
+    private GameObject barEnergy;
+    private Vector3 barEnergy_nmSize;
+    private Vector3 barEnergy_nmPos;
+
+    // LEVEL
+
+    private List<GameObject> powerCells = new List<GameObject>();
+    private int cellCount;
+    private int cellsObtained = 0;
+
+    [SerializeField] TextMeshProUGUI cellCounter;
 
     #endregion
 
@@ -63,18 +93,24 @@ public class Player : CoreFunc
         float xPos = mainCam.pixelWidth / 2.0f;
         float yPos = mainCam.pixelHeight / 2.0f;
         screenCentre = new Vector3(xPos, yPos, 0.0f);
+
         GetUIComponents();
         SetDeadzone();
+
         rb = gameObject.GetComponent<Rigidbody>();
         if (invertPitch)
         {
             pitchInv = 1;
         }
+
+        dangerSpeed = maxMoveSpeed * sprintFactor * 0.8f;
     }
 
     void Start()
     {
         GetWeapons();
+        ResetResources();
+        GetCells();
     }
 
     void Update()
@@ -85,20 +121,39 @@ public class Player : CoreFunc
             Steering();
             Movement();
             Shooting();
+            EnergyDrain();
         }
     }
 
     void FixedUpdate()
     {
-        CapSpeeds();
+        rb.AddRelativeForce(movementInput * maxMoveSpeed * Sprint());
+        if (!(movementInput[0] == 0.0f && movementInput[1] == 0.0f && movementInput[2] == 0.0f))
+        {
+            CapSpeeds();
+        }
+        fixedUpdateVel = rb.velocity;
     }
 
-    void OnTriggerEnter(Collider other)
+    void OnCollisionEnter(Collision collision)
     {
-        if (other.gameObject.CompareTag("Objective"))
+        if (fixedUpdateVel.magnitude > dangerSpeed)
         {
-            Debug.Log("Collided with objective item");
-            Destroy(other.gameObject, 0.1f);
+            if (!collision.gameObject.CompareTag("Boundary"))
+            {
+                TakeDamage(1);
+            }
+        }
+    }
+
+    void OnTriggerEnter(Collider trigger)
+    {
+        if (trigger.gameObject.CompareTag("Pickup"))
+        {
+            int triggerType = (int)trigger.gameObject.GetComponent<Pickup>().type;
+            int triggerPower = trigger.gameObject.GetComponent<Pickup>().power;
+            Pickup(triggerType, triggerPower);
+            Destroy(trigger.gameObject, 0.1f);
         }
     }
 
@@ -133,6 +188,16 @@ public class Player : CoreFunc
                 crosshair_Dynamic = obj;
             }
         }
+
+        barHealth = GameObject.FindGameObjectWithTag("Health");
+        barHealth = GetChildrenWithTag(barHealth, "Bar")[0];
+        barHealth_nmSize = barHealth.GetComponent<RectTransform>().sizeDelta;
+        barHealth_nmPos = barHealth.transform.localPosition;
+
+        barEnergy = GameObject.FindGameObjectWithTag("Energy");
+        barEnergy = GetChildrenWithTag(barEnergy, "Bar")[0];
+        barEnergy_nmSize = barEnergy.GetComponent<RectTransform>().sizeDelta;
+        barEnergy_nmPos = barEnergy.transform.localPosition;
     }
 
     private void GetWeapons()
@@ -166,7 +231,29 @@ public class Player : CoreFunc
         }
     }
 
+    private void GetCells()
+    {
+        GameObject[] pickups = GameObject.FindGameObjectsWithTag("Pickup");
+        foreach (GameObject item in pickups)
+        {
+            if ((int)item.GetComponent<Pickup>().type == 0)
+            {
+                powerCells.Add(item);
+            }
+        }
+        cellCount = powerCells.Count;
+        UpdateCellCount();
+    }
+
     /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+    private void ResetResources()
+    {
+        healthCurrent = healthMax;
+        energyCurrent = energyMax;
+        ResetBar(true);
+        ResetBar(false);
+    }
 
     private void DynamicCrosshair()
     {
@@ -205,33 +292,31 @@ public class Player : CoreFunc
 
     private void Movement()
     {
-        Vector3 movementInput = new Vector3();
+        movementInput = Vector3.zero;
         if (Input.GetKey(controls.movement.forward))
         {
-            movementInput[2] += 1;
+            movementInput[2] += moveForceFactor;
         }
         if (Input.GetKey(controls.movement.back))
         {
-            movementInput[2] -= 1;
+            movementInput[2] -= moveForceFactor;
         }
         if (Input.GetKey(controls.movement.right))
         {
-            movementInput[0] += 1;
+            movementInput[0] += moveForceFactor;
         }
         if (Input.GetKey(controls.movement.left))
         {
-            movementInput[0] -= 1;
+            movementInput[0] -= moveForceFactor;
         }
         if (Input.GetKey(controls.movement.up))
         {
-            movementInput[1] += 1;
+            movementInput[1] += moveForceFactor;
         }
         if (Input.GetKey(controls.movement.down))
         {
-            movementInput[1] -= 1;
+            movementInput[1] -= moveForceFactor;
         }
-
-        rb.AddRelativeForce(movementInput * maxMoveSpeed * Sprint());
     }
 
     private void Shooting()
@@ -250,6 +335,21 @@ public class Player : CoreFunc
         if (Input.GetKeyDown(controls.action.fire))
         {
             Fire();
+        }
+    }
+
+    private void EnergyDrain()
+    {
+        if (energyCurrent > 0)
+        {
+            int energyPrevious = energyCurrent;
+            if (energyDrainTimer >= energyDrainInterval)
+            {
+                energyCurrent -= 1;
+                energyDrainTimer = 0.0f;
+                UpdateBar(false, energyPrevious, energyCurrent, energyMax);
+            }
+            energyDrainTimer += Time.deltaTime;
         }
     }
 
@@ -299,9 +399,9 @@ public class Player : CoreFunc
     {
         Vector3 capVel = new Vector3();
         Vector3 capRot = new Vector3();
-        if (rb.velocity.magnitude > maxMoveSpeed)
+        if (rb.velocity.magnitude > maxMoveSpeed * Sprint())
         {
-            capVel = rb.velocity.normalized * maxMoveSpeed;
+            capVel = rb.velocity.normalized * maxMoveSpeed * Sprint();
             rb.velocity = capVel;
         }
         if (rb.angularVelocity[0] > maxRotSpeed || rb.angularVelocity[1] > maxRotSpeed)
@@ -381,7 +481,7 @@ public class Player : CoreFunc
             GameObject hitObject = hit.collider.gameObject;
             if (hitObject.CompareTag("Target"))
             {
-                HitTarget(hitObject);
+
             }
 
             foreach (GameObject emitter in weaponEmitters)
@@ -439,10 +539,111 @@ public class Player : CoreFunc
         Destroy(line);
     }
 
+    private void TakeDamage(int dmg)
+    {
+        int healthPrevious = healthCurrent;
+        if (healthCurrent >= dmg)
+        {
+            healthCurrent -= dmg;
+            UpdateBar(barHealth, healthPrevious, healthCurrent, healthMax);
+        }
+        else if (healthCurrent > 0)
+        {
+            healthCurrent = 0;
+            UpdateBar(barHealth, healthPrevious, healthCurrent, healthMax);
+        }
+    }
+
+    private void UpdateBar(bool isHealth, float valPre, float valNew, float valMax)
+    {
+        float scaleFactor = valNew / valMax;
+        float valDif = valNew - valPre;
+        if (isHealth)
+        {
+            GameObject mainBar = barHealth.transform.GetChild(0).gameObject;
+            GameObject flashSeg = barHealth.transform.GetChild(1).gameObject;
+            flashSeg.SetActive(true);
+
+            Vector3 newSize = barHealth_nmSize;
+            newSize[0] = barHealth_nmSize[0] * scaleFactor;
+            mainBar.GetComponent<RectTransform>().sizeDelta = newSize;
+            Vector3 flashSize = barHealth_nmSize;
+            flashSize[0] = barHealth_nmSize[0] * (Mathf.Abs(valDif) / valMax);
+            flashSeg.GetComponent<RectTransform>().sizeDelta = flashSize;
+
+            Vector3 newPos = mainBar.transform.localPosition;
+            newPos[0] += barHealth_nmSize[0] * (valDif / valMax) * 0.5f;
+            mainBar.transform.localPosition = newPos;
+            Vector3 flashPos = newPos;
+            flashPos[0] += (newSize[0] + flashSize[0]) / 2.0f;
+            flashSeg.transform.localPosition = flashPos;
+
+            DoColourFlash(flashSeg.GetComponent<Image>(), new Color(1.0f, 0.0f, 0.0f, 1.0f), 0.4f, true, false);
+        }
+        else
+        {
+            Vector3 newSize = barEnergy_nmSize;
+            newSize[0] = barEnergy_nmSize[0] * scaleFactor;
+            barEnergy.GetComponent<RectTransform>().sizeDelta = newSize;
+            
+            Vector3 newPos = barEnergy.transform.localPosition;
+            newPos[0] += barEnergy_nmSize[0] * (valDif / valMax) * 0.5f;
+            barEnergy.transform.localPosition = newPos;
+        }
+    }
+
+    private void ResetBar(bool isHealth)
+    {
+        if (isHealth)
+        {
+            GameObject mainBar = barHealth.transform.GetChild(0).gameObject;
+            GameObject flashSeg = barHealth.transform.GetChild(1).gameObject;
+            mainBar.GetComponent<RectTransform>().sizeDelta = barHealth_nmSize;
+            mainBar.transform.localPosition = barHealth_nmPos;
+            flashSeg.transform.localPosition = barHealth_nmPos;
+            flashSeg.SetActive(false);
+        }
+        else
+        {
+            barEnergy.GetComponent<RectTransform>().sizeDelta = barEnergy_nmSize;
+            barEnergy.transform.localPosition = barEnergy_nmPos;
+        }
+    }
+
+    private void Pickup(int type, int power)
+    {
+        if (type == 0)
+        {
+            int energyPrevious = energyCurrent;
+            if (energyMax - energyCurrent >= power)
+            {
+                energyCurrent += power;
+            }
+            else
+            {
+                energyCurrent = energyMax;
+            }
+            cellsObtained += 1;
+            UpdateCellCount();
+            UpdateBar(false, energyPrevious, energyCurrent, energyMax);
+        }
+        else if (type == 1)
+        {
+            // PLACEHOLDER
+            // Health restore
+        }
+    }
+
+    private void UpdateCellCount()
+    {
+        cellCounter.text = cellsObtained + " / " + cellCount;
+        if (cellsObtained == cellCount)
+        {
+
+        }
+    }
+
     /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-    private void HitTarget(GameObject target)
-    {
-        Debug.Log("Hit target at " + target.transform.position);
-    }
+
 }

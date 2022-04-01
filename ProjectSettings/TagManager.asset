@@ -17,6 +17,11 @@ TagManager:
   - MenuFrame
   - MenuPanel
   - MenuButton
+  - Health
+  - Energy
+  - Bar
+  - Pickup
+  - Boundary
   layers:
   - Default
   - TransparentFX
